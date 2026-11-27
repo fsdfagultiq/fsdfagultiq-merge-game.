@@ -1,0 +1,133 @@
+# =============================================================================
+# Codemagic CI/CD for Dim Sum Drop: Night Market (Capacitor 8, zero-build web app in ./www)
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-native-android-app/
+#       https://docs.codemagic.io/yaml-code-signing/signing-android/
+#       https://docs.codemagic.io/yaml-code-signing/signing-ios/
+#
+# One-time setup in the Codemagic web UI (Teams > your team):
+#   ANDROID
+#     1. Code signing identities > Android keystores > upload your upload-keystore (.jks)
+#        and give it the reference name used below: dimsum_upload_keystore   <-- FILL/MATCH
+#        Codemagic then exports CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS,
+#        CM_KEY_PASSWORD, which android/app/build.gradle already reads.
+#     2. (Optional, for auto-upload) Google Play service-account JSON key stored in an
+#        environment variable group named google_play_credentials as GCLOUD_SERVICE_ACCOUNT_CREDENTIALS.
+#   iOS
+#     3. Integrations > App Store Connect > add an API key and name it "codemagic_asc_key"  <-- FILL/MATCH
+#     4. Create the app in App Store Connect with bundle id com.nightmarket.dimsummerge
+#        and put its numeric Apple ID in APP_STORE_APPLE_ID below.            <-- FILL
+# =============================================================================
+
+workflows:
+  # ---------------------------------------------------------------------------
+  android-release:
+    name: Android release (.aab for Google Play)
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      android_signing:
+        - dimsum_upload_keystore          # <-- reference name of your keystore in Codemagic
+      # groups:
+      #   - google_play_credentials       # <-- uncomment if you enable google_play publishing below
+      node: 22
+      java: 21                            # Capacitor 8 / AGP 8.13 need JDK 21
+      vars:
+        PACKAGE_NAME: "com.nightmarket.dimsummerge"
+    triggering:
+      events:
+        - tag                              # build when you push a tag such as v1.0.0
+      tag_patterns:
+        - pattern: 'v*'
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Copy web assets + plugins into the Android project
+        script: npx cap sync android
+      - name: Point Gradle at the Android SDK
+        script: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Bump versionCode automatically (keeps versionName from build.gradle)
+        script: |
+          # Google Play rejects a versionCode it has already seen. Use the Codemagic build number.
+          cd android
+          sed -i -E "s/versionCode [0-9]+/versionCode ${BUILD_NUMBER:-1}/" app/build.gradle
+          grep -E "versionCode|versionName" app/build.gradle
+      - name: Build signed Android App Bundle
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - you@example.com                # <-- FILL: where build results are emailed
+        notify:
+          success: true
+          failure: true
+      # Uncomment to upload every successful build to the Play Console INTERNAL testing track.
+      # Requirements: the app must already exist in Play Console and the FIRST .aab must be
+      # uploaded manually once; the service account needs "Release manager" permission.
+      # google_play:
+      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      #   track: internal
+      #   submit_as_draft: true            # keep true until the store listing is complete
+
+  # ---------------------------------------------------------------------------
+  ios-release:
+    name: iOS release (.ipa for TestFlight / App Store)
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    integrations:
+      app_store_connect: codemagic_asc_key # <-- name of your App Store Connect API key integration
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.nightmarket.dimsummerge
+      node: 22
+      xcode: latest
+      vars:
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.nightmarket.dimsummerge"
+        APP_STORE_APPLE_ID: 0000000000      # <-- FILL: numeric Apple ID from App Store Connect > App Information
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*'
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Create the iOS project if it is not committed
+        script: |
+          if [ ! -d ios ]; then npx cap add ios; fi
+      - name: Copy web assets + plugins into the iOS project (Swift Package Manager)
+        script: npx cap sync ios
+      - name: Apply code signing profiles (fetched automatically via App Store Connect API)
+        script: xcode-project use-profiles
+      - name: Set build number
+        script: |
+          cd ios/App
+          agvtool new-version -all $(($BUILD_NUMBER + 1))
+      - name: Build ipa
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      email:
+        recipients:
+          - you@example.com                # <-- FILL
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true         # uploads to TestFlight; App Store submission stays manual
+        # submit_to_app_store: false

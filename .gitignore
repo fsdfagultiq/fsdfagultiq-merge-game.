@@ -1,2 +1,34 @@
+# Dependencies
 node_modules/
 dist/
+
+# Android build outputs / local machine files (the android/ project itself IS committed)
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+local.properties
+android/.idea/
+android/.kotlin/
+
+# Signing secrets - never commit
+*.keystore
+*.jks
+keystore.properties
+android/keystore.properties
+*.p12
+*.mobileprovision
+
+# iOS build outputs (the ios/ project, if present, IS committed)
+ios/App/Pods/
+ios/App/build/
+ios/App/output/
+ios/DerivedData/
+ios/App/DerivedData/
+**/xcuserdata/
+build/ios/
+
+# OS / editor
+.DS_Store
+*.log

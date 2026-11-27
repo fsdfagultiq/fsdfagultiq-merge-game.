@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2C1A1D">
+<meta name="format-detection" content="telephone=no">
+<title>Dim Sum Drop: Night Market</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="wrap" data-theme="wood">
+    <div id="boot"><div class="spin"></div></div>
+    <div id="ui">
+      <div id="hud">
+        <div class="scorebox">
+          <div class="score-lbl">SCORE</div>
+          <div id="score">0</div>
+          <div id="bestRow">BEST <span id="best">0</span></div>
+        </div>
+        <div class="wallet">
+          <div class="pill" title="Coins"><i class="coin"></i><span id="coins">0</span></div>
+          <div class="pill" title="Gems"><i class="gem"></i><span id="gems">0</span></div>
+        </div>
+        <div class="icons">
+          <button id="btnGear" class="round" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
+          <button id="btnDaily" class="round" type="button" aria-label="Daily rewards and missions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M3 9h18M12 9v11M12 9c-2-4-6-4-6-1.5S10 9 12 9c2 0 6 1 6-1.5S14 5 12 9"/></svg><b id="dailyBadge" hidden>0</b></button>
+        </div>
+        <div id="nextBox"><img id="nextImg" alt="Next dish"><span id="nextIce" hidden>ICED</span></div>
+      </div>
+      <div id="stripRow">
+        <button id="strip" type="button" aria-label="Open the dish album"></button>
+        <button id="spiceBtn" type="button" aria-label="Load a Golden Spice wildcard"><img id="spiceImg" alt=""><span id="spiceCount">×0</span></button>
+      </div>
+      <div id="fever" hidden></div>
+      <div id="disc" hidden></div>
+      <div id="hint" hidden>
+        <svg class="hand" viewBox="0 0 48 48" aria-hidden="true"><path d="M18 30V13a3 3 0 0 1 6 0v11l1-1a3 3 0 0 1 6 0v1a3 3 0 0 1 6 1v3a3 3 0 0 1 5 2v6c0 6-5 10-11 10h-3c-4 0-7-2-9-5l-6-8a3 3 0 0 1 4-4z" fill="#FFF8E7" stroke="#3B1F14" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <span>Drag &amp; Release to Drop</span>
+      </div>
+
+      <div id="bar">
+        <button class="tb" id="btnToss" type="button" aria-label="Toss the wok">
+          <span class="tag" id="tagToss"></span>
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h24a10 10 0 0 1-24 0z" fill="currentColor" fill-opacity=".15"/><path d="M29 22l8-3"/><circle cx="13" cy="11" r="3"/><circle cx="21" cy="7" r="2.5"/><circle cx="24" cy="14" r="2"/></svg>
+          <b>TOSS</b>
+        </button>
+        <button class="tb" id="btnSwap" type="button" aria-label="Swap the dish in your hand">
+          <span class="tag gemtag" id="tagSwap"></span>
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 15a12 12 0 0 1 21-5l3 3"/><path d="M32 6v7h-7"/><path d="M32 25a12 12 0 0 1-21 5l-3-3"/><path d="M8 34v-7h7"/></svg>
+          <b>SWAP</b>
+        </button>
+        <button class="tb" id="btnEat" type="button" aria-label="Eat all small dishes">
+          <span class="tag gemtag" id="tagEat"></span>
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4l9 22M18 3l4 23"/><path d="M6 26h28a14 10 0 0 1-28 0z" fill="currentColor" fill-opacity=".15"/></svg>
+          <b>EAT SMALL</b>
+        </button>
+        <button class="tb" id="btnShop" type="button" aria-label="Open the shop, stall upgrades and themes">
+          <span class="tag free" id="tagShop"></span>
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14h26l-2 20H9z" fill="currentColor" fill-opacity=".15"/><path d="M14 14v-3a6 6 0 0 1 12 0v3"/></svg>
+          <b>SHOP</b>
+        </button>
+      </div>
+
+      <div id="sheet" hidden></div>
+      <div id="over" hidden></div>
+      <div id="toast" hidden role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Load order matters: config → engine → platform bridge → game modules → boot. Everything is local (works offline). -->
+<script src="store-config.js"></script>
+<script src="phaser.min.js"></script>
+<script src="js/platform.js"></script>
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/art.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
