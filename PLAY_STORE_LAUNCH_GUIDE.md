@@ -254,7 +254,7 @@ Play Console → App content → **Content rating → Start questionnaire**.
 3. **Add ad unit → Interstitial** → name `interstitial_gameover` → copy its ID.
 4. Open `www/store-config.js` and paste the IDs into `ADMOB.android` (the app ID, rewarded unit and interstitial unit fields). Then set:
    ```js
-   USE_MOCK_ADS = false   // or USE_MOCK_ADS: false, depending on how the file declares it
+   USE_MOCK_ADS: false,
    ```
    Leave the iOS IDs as they are until you ship iOS.
 5. Open `android/app/src/main/AndroidManifest.xml` and replace the **test** App ID in:
@@ -287,7 +287,7 @@ Play Console → **Monetize with Play → Products → In-app products → Creat
 - Set the price in USD and let Play convert it, or set IDR manually (for example Rp 15,000 / 29,000 / 49,000 rounded; verify pricing templates).
 - Add an Indonesian name and description for each product.
 - **Activate** each product.
-- In `www/store-config.js` set `USE_MOCK_IAP = false` and confirm the `PRODUCTS` IDs match the table above.
+- In `www/store-config.js` set `USE_MOCK_IAP: false,` and confirm the `PRODUCTS` IDs match the table above.
 - Add your Google account under Play Console → Settings → **License testing** so test purchases aren't charged.
 
 ### 6.4 Upload keystore and signing
@@ -298,7 +298,7 @@ Play Console → **Monetize with Play → Products → In-app products → Creat
    Store `upload.jks` and both passwords in a password manager. **Never commit it**; add `*.jks` to `.gitignore`.
 2. **Codemagic** (workflow `android-release`):
    - Codemagic → Team/App settings → **Code signing identities → Android keystores** → upload `upload.jks`, enter the keystore password, alias `upload`, and key password, and give it a reference name (for example `upload_keystore`).
-   - In `codemagic.yaml` under `android-release` → `environment: android_signing: - upload_keystore`. Codemagic then exports **`CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`**, which `android/app/build.gradle`'s `signingConfigs.release` should read through `System.getenv(...)`.
+   - In `codemagic.yaml` under `android-release` → `environment: android_signing: - upload_keystore`. Codemagic then exports **`CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`**, which `android/app/build.gradle`'s `signingConfigs.release` already reads through `System.getenv(...)` (or from an untracked `android/keystore.properties`).
    - Run the workflow. The artifact is `app-release.aab`.
 3. **Local build** (same env vars):
    ```bash
@@ -324,8 +324,8 @@ Play Console → **Grow → Store presence → Main store listing**: paste secti
 | Asset | File | Spec |
 |---|---|---|
 | App icon | `store-assets/app-icon-512.png` | 512×512 PNG (32-bit, ≤1 MB). Play applies the rounded mask, so don't pre-round it |
-| Feature graphic | `store-assets/feature-graphic-1024x500.png` | 1024×500 JPG/24-bit PNG, no alpha |
-| Phone screenshots | `store-assets/screenshot-1.png` … `screenshot-4.png` | 1080×1920 (9:16). Minimum 2, maximum 8. Games need at least 4 portrait screenshots at 1080px+ to be eligible for some featuring/recommendation surfaces (verify in Play Console) |
+| Feature graphic | `store-assets/feature-graphic-1024x500.png` | 1024×500 JPG/24-bit PNG, no alpha (the generated file is fully opaque; regenerate any time with `npm run assets`) |
+| Phone screenshots | `store-assets/screenshot-1-gameplay.png`, `screenshot-2-fever.png`, `screenshot-3-stall.png`, `screenshot-4-shop.png` | 1080×1920 (9:16). Minimum 2, maximum 8. Games need at least 4 portrait screenshots at 1080px+ to be eligible for some featuring/recommendation surfaces (verify in Play Console) |
 
 Also fill **Store settings**: category **Puzzle**, tags, contact email `[YOUR SUPPORT EMAIL]`, website (needed for app-ads.txt, see 6.8).
 
@@ -357,7 +357,7 @@ Personal developer accounts created after 13 Nov 2023 must run a **closed test w
 8. When approved: **Production → Create new release** → promote the tested build → choose countries (all, or start with Indonesia plus a few markets) → consider a **staged rollout** (20% → 50% → 100%).
 
 ### 6.10 Pre-launch sanity checks
-- [ ] `USE_MOCK_ADS = false`, `USE_MOCK_IAP = false`, real AdMob IDs in both `store-config.js` and the manifest.
+- [ ] `USE_MOCK_ADS: false`, `USE_MOCK_IAP: false`, real AdMob IDs in both `store-config.js` and the manifest.
 - [ ] Interstitials appear only from run 2 onward, every 2nd game over, and never after Remove Ads.
 - [ ] Rewarded ads grant their reward only on the completion callback.
 - [ ] The consent form appears in EEA testing, and **Settings → Privacy choices** reopens it.

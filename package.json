@@ -10,7 +10,8 @@
     "android:open": "cap open android",
     "build:android": "cd android && ./gradlew bundleRelease",
     "assets": "node scripts/generate-store-assets.mjs",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node tests/e2e.cjs"
   },
   "dependencies": {
     "@capacitor/android": "8.6.3",
@@ -25,5 +26,8 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

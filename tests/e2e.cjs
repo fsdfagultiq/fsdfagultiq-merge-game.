@@ -184,8 +184,9 @@ async function waitOverGone(p, ms = 4000) { await p.waitForFunction(() => docume
     ok('revive removes top 30% and resumes', (await ev(p, 's.pieces.size')) === n0 - Math.ceil(n0 * 0.3) && (await ev(p, 's.state')) === 'play', `${n0}→${await ev(p, 's.pieces.size')}`);
     await ev(p, '(s.gameOver(), 1)'); await sleep(100);
     ok('revive offered only once per run', !(await p.$('#reviveBtn')));
+    await ev(p, '(s.runCoins = 40, 1)'); await ev(p, '(N.UI.close(), s.gameOver(), 1)'); await sleep(100);
     const c0 = await ev(p, 'd.coins'), rc = await ev(p, 's.runCoins');
-    if (rc > 0) { await p.click('#doubleBtn'); await waitOverGone(p); ok('2x Coins rewarded ad doubles run coins', (await ev(p, 'd.coins')) === c0 + rc, `${c0}+${rc}→${await ev(p, 'd.coins')}`); }
+    { await p.click('#doubleBtn'); await waitOverGone(p); ok('2x Coins rewarded ad doubles run coins', (await ev(p, 'd.coins')) === c0 + rc, `${c0}+${rc}→${await ev(p, 'd.coins')}`); }
     let adSeen = false;
     const watchAd = async () => { adSeen = false; for (let i = 0; i < 12; i++) { const t = await p.evaluate(() => document.getElementById('over').innerText); if (/Ad break/.test(t)) adSeen = true; await sleep(100); } };
     await p.click('#againBtn'); await watchAd();
