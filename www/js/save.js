@@ -74,14 +74,10 @@
     today() {
       const now = new Date();
       const real = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 864e5), d = this.data;
+      // Strict high-water mark: day numbers never move backwards, so no clock change can re-pay a streak day or
+      // regenerate missions. Trade-off (deliberate): if a device clock was once set far ahead and then corrected,
+      // dailies pause until real time catches up. Phones normally use network time, so this is rare.
       if (real > d.maxDay) { d.maxDay = real; this.saveSoon(); }
-      else if (d.maxDay - real > 2) {
-        // The clock was set far ahead and has been corrected. Rejoin real time instead of freezing dailies until it
-        // catches up, but treat today as already claimed so winding the clock back never pays out twice.
-        d.maxDay = real; d.streak.lastClaim = Math.min(d.streak.lastClaim, real); d.streak.lastPrompt = Math.min(d.streak.lastPrompt, real);
-        if (d.daily.day > real) d.daily.day = real;
-        this.save();
-      }
       return Math.max(real, d.maxDay);
     },
     _sanitize: sanitize, _defaults: defaults,

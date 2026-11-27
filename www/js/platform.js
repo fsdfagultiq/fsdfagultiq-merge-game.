@@ -347,7 +347,10 @@
     return withTimeout(NP.getPurchases({ productType: 'inapp' }), 8000, null).then(function (r) {
       var tx = ((r && r.purchases) || []).filter(function (t) { return t.productIdentifier === productId && isValidTx(t); })[0];
       if (!tx || !tx.purchaseToken) return false;
-      return withTimeout(NP.consumePurchase({ purchaseToken: tx.purchaseToken }).then(function () { return true; }), 8000, false);
+      var k = txKey(tx), already = wasGranted(k);                // granted earlier but the consume failed: don't pay twice
+      markGranted(k);
+      return withTimeout(NP.consumePurchase({ purchaseToken: tx.purchaseToken }).then(function () { return true; }), 8000, false)
+        .then(function () { return already ? 'delivered' : true; });
     });
   }
 
