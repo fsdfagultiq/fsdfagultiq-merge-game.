@@ -19,10 +19,12 @@
       $('btnToss').onclick = () => this.onToss();
       $('btnSwap').onclick = () => this.onBoost('swap');
       $('btnEat').onclick = () => this.onBoost('eat');
-      $('btnShop').onclick = () => this.shop('shop');
-      $('btnGear').onclick = () => this.settings();
-      $('btnDaily').onclick = () => this.daily();
-      $('strip').onclick = () => this.album();
+      const guard = fn => () => { if (!this.modal && !this.overOpen) fn(); };
+      $('btnShop').onclick = guard(() => this.shop('shop'));
+      $('btnGear').onclick = guard(() => this.settings());
+      $('btnDaily').onclick = guard(() => this.daily());
+      $('strip').onclick = guard(() => this.album());
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); this.onBack(); } });
       $('spiceBtn').onclick = () => { if (scene.useSpice()) { N.Sfx.click(); this.toast('Golden Spice loaded. It upgrades any dish it touches.'); } };
       $('ui').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { b.blur(); } });
       N.Meta.onChange(() => this.refresh());
@@ -102,16 +104,25 @@
       }
       if (closable) card.querySelector('.x').onclick = () => this.close();
       root.appendChild(card); root.hidden = false;
+      this.setInert();
+      const first = card.querySelector('.acts button:not(:disabled), button:not(.x):not(:disabled)'); if (first) first.focus({ preventScroll: true });
       return card;
+    },
+    setInert() {                                   // keep HUD/bar out of reach (taps, keyboard, TalkBack) while a modal or overlay is up
+      const on = !!(this.modal || this.overOpen);
+      for (const id of ['hud', 'stripRow', 'bar']) { const el = $(id); el.inert = on; if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden'); }
+      $('sheet').inert = this.overOpen;
     },
     close() {
       this.closedAt = performance.now();
       $('sheet').hidden = true; $('sheet').innerHTML = ''; this.modal = null;
       if (this.scene) this.scene.setPause('modal', false);
+      this.setInert();
       this.refresh();
+      if (this.scene && this.scene.state === 'over' && !this.overOpen && !this.inEndFlow) this.gameOver({ isBest: false });   // safety net: a finished run always shows its game-over card
     },
-    showOver(html) { const o = $('over'); o.innerHTML = `<div class="card small">${html}</div>`; o.hidden = false; this.overOpen = true; if (this.scene) this.scene.setPause('over', true); },
-    hideOver() { const o = $('over'); o.hidden = true; o.innerHTML = ''; this.overOpen = false; this.closedAt = performance.now(); if (this.scene) this.scene.setPause('over', false); },
+    showOver(html) { const o = $('over'); o.innerHTML = `<div class="card small" role="dialog" aria-modal="true" aria-live="polite">${html}</div>`; o.hidden = false; this.overOpen = true; if (this.scene) this.scene.setPause('over', true); this.setInert(); const b = o.querySelector('button'); if (b) b.focus({ preventScroll: true }); },
+    hideOver() { const o = $('over'); o.hidden = true; o.innerHTML = ''; this.overOpen = false; this.closedAt = performance.now(); if (this.scene) this.scene.setPause('over', false); this.setInert(); },
 
     /* ---------- ads (real AdMob via Platform on native, mock overlay on web) */
     async rewarded(placement) {
@@ -152,16 +163,25 @@
       let ok = false;
       try { ok = await P().purchase(id); } catch (e) { ok = false; }
       this.hideOver();
-      if (ok) { this.grantProduct(id); N.Sfx.chime(); }
-      else this.toast('Purchase not completed. You were not charged.');
-      return ok;
+      if (ok === true) { this.grantProduct(id); N.Sfx.chime(); return true; }
+      if (ok === 'delivered') { N.Sfx.chime(); return true; }
+      if (ok === 'pending') { this.toast('Payment pending. Your items will arrive automatically once it completes.'); return false; }
+      this.toast('Purchase not completed. You were not charged.');
+      return false;
     },
     grantProduct(id) {
       const d = D();
       if (id === 'remove_ads_pack') { d.adsRemoved = true; this.toast('Ads removed. Coins now count double.'); }
       if (id === 'starter_gems') { N.Meta.grant({ gems: 500, wild: 3 }); this.toast('Added 500 gems and 3 Golden Spice wildcards.'); }
-      if (id === 'starter_bundle') { d.starterBundleBought = true; d.adFreeUntil = Math.max(d.adFreeUntil, Date.now() + 3 * 864e5); N.Meta.grant({ gems: 500, wild: 3 }); this.toast('Starter Bundle added: 500 gems, 3 wildcards, 3 ad-free days.'); }
+      if (id === 'starter_bundle' && d.starterBundleBought) { this.toast('Starter Bundle is already yours.'); }
+      else if (id === 'starter_bundle') { d.starterBundleBought = true; d.adFreeUntil = Math.max(d.adFreeUntil, Date.now() + 3 * 864e5); N.Meta.grant({ gems: 500, wild: 3 }); this.toast('Starter Bundle added: 500 gems, 3 wildcards, 3 ad-free days.'); }
       N.Save.save(); this.refresh();
+    },
+    deliver(id) {                                  // purchase completed outside the buy flow (pending payment cleared, or app restarted)
+      const d = D();
+      if (id === 'remove_ads_pack' && d.adsRemoved) return;
+      if (id === 'starter_bundle' && d.starterBundleBought) return;
+      this.grantProduct(id); N.Sfx.chime();
     },
     async restore() {
       this.showOver('<div class="spin"></div><p>Restoring purchases…</p>');
@@ -326,9 +346,9 @@
       const s = this.scene, d = D(), canRevive = !s.revived;
       const acts = [];
       if (canRevive) acts.push({ id: 'reviveBtn', label: 'REVIVE (Watch Ad)', kind: 'primary', onClick: async () => {
-        this.close(); if (await this.rewarded('revive')) { s.revive(); } else this.gameOver({ isBest: false }); } });
+        this.inEndFlow = true; this.close(); this.inEndFlow = false; if (await this.rewarded('revive')) { s.revive(); } else this.gameOver({ isBest: false }); } });
       if (!s.doubled && s.runCoins > 0) acts.push({ id: 'doubleBtn', label: `2x Coins (Watch Ad) <small>+${fmt(s.runCoins)}</small>`, kind: 'jade', onClick: async () => {
-        this.close(); if (await this.rewarded('double_coins')) { s.doubled = true; this.justRewarded = true; N.Meta.grant({ coins: s.runCoins }); s.runCoins *= 2; this.toast('Coins doubled!'); }
+        this.inEndFlow = true; this.close(); this.inEndFlow = false; if (await this.rewarded('double_coins')) { s.doubled = true; this.justRewarded = true; N.Meta.grant({ coins: s.runCoins }); s.runCoins *= 2; this.toast('Coins doubled!'); }
         this.gameOver({ isBest: false }); } });
       acts.push({ id: 'againBtn', label: 'Play again', kind: canRevive ? 'ghost' : 'primary', onClick: () => this.endRun() });
       this.open({ title: isBest ? 'New best feast!' : 'The steamer overflowed!', closable: false, onBack: () => {},
@@ -340,7 +360,7 @@
     async endRun() {
       const d = D(), s = this.scene;
       d.runs++; d.declines++; N.Save.save();
-      this.close();
+      this.inEndFlow = true; this.close(); this.inEndFlow = false;
       const offer = d.runs === 3 && !d.starterBundleBought && !d.starterOfferShown;
       const adDue = d.runs >= 2 && d.declines % 2 === 0 && !d.adsRemoved && Date.now() > d.adFreeUntil && !this.justRewarded;   // never on run #1
       this.justRewarded = false;

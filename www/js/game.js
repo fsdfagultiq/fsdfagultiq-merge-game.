@@ -50,9 +50,9 @@
       this.input.on('pointerdown', p => { this.aimX = p.x; this.armed = !this.isPaused() && performance.now() - (N.UI.closedAt || 0) > 250; });
       this.input.on('pointerup', p => { if (this.armed) { this.armed = false; this.aimX = p.x; this.drop(); } });
       this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,A,D');
-      this.input.keyboard.addCapture('SPACE,DOWN');
-      this.input.keyboard.on('keydown-SPACE', () => this.drop());
-      this.input.keyboard.on('keydown-DOWN', () => this.drop());
+      const keyDrop = () => { const a = document.activeElement; if (a && a.tagName === 'BUTTON') return; this.drop(); };   // Space on a focused button presses the button only
+      this.input.keyboard.on('keydown-SPACE', keyDrop);
+      this.input.keyboard.on('keydown-DOWN', keyDrop);
 
       this.events.once('shutdown', () => { N.game = null; });
       this.newRun();

@@ -30,7 +30,17 @@ def hasReleaseSigning = releaseStoreFile != null && releaseStoreFile.exists() &&
         signingValue('CM_KEY_ALIAS', 'keyAlias') &&
         signingValue('CM_KEY_PASSWORD', 'keyPassword')
 if (!hasReleaseSigning) {
-    logger.warn('[signing] No release keystore found (CM_KEYSTORE_* env vars or android/keystore.properties). Release build will be UNSIGNED.')
+    logger.warn('[signing] No release keystore found (CM_KEYSTORE_* env vars or android/keystore.properties).')
+}
+// Fail fast instead of silently producing an unsigned release bundle that Google Play rejects.
+// Set ALLOW_UNSIGNED_RELEASE=true to build an unsigned release on purpose (e.g. CI smoke builds).
+gradle.taskGraph.whenReady { graph ->
+    def wantsRelease = graph.allTasks.any { it.project == project && it.name ==~ /(bundle|assemble)Release/ }
+    if (wantsRelease && !hasReleaseSigning && System.getenv('ALLOW_UNSIGNED_RELEASE') != 'true') {
+        throw new GradleException('[signing] Release build requested but no upload keystore is configured. ' +
+            'Set CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS and CM_KEY_PASSWORD (or create android/keystore.properties). ' +
+            'See PLAY_STORE_LAUNCH_GUIDE.md section 6.4.')
+    }
 }
 
 android {

@@ -25,6 +25,7 @@
 
   P.setMockHandlers({ ad: (kind, placement) => N.UI.mockAd(kind, placement), purchase: id => N.UI.mockPurchase(id) });
   P.onBack(() => N.UI.onBack());
+  if (P.onEntitlement) P.onEntitlement(id => N.UI.deliver(id));
   P.onPause(() => { N.Save.save(); N.Sfx.suspend(); if (N.game) { N.game.setPause('app', true); N.UI.pause(); } });
   P.onResume(() => { N.Sfx.resume(); if (N.game) N.game.setPause('app', false); });
 
@@ -35,6 +36,7 @@
     wrap.style.width = w + 'px'; wrap.style.height = h + 'px'; document.documentElement.style.setProperty('--u', (w / N.W) + 'px');
   }
   fit(); window.addEventListener('resize', fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(app);       // safe-area changes (edge-to-edge, status bar) don't always fire resize
   // Block pinch-zoom, double-tap zoom, long-press menus and pull-to-refresh inside the app
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('contextmenu', e => e.preventDefault());

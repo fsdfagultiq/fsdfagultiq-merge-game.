@@ -154,6 +154,11 @@ async function waitOverGone(p, ms = 4000) { await p.waitForFunction(() => docume
     ok('cancelled purchase grants nothing & unlocks UI', !(await ev(p, 's.pauseReasons.has("over")')));
     await dismissSheet(p);
     ok('game resumes after closing shop', !(await ev(p, 's.isPaused()')));
+    ok('HUD interactive again after modal closes', await p.evaluate(() => !document.getElementById('bar').inert));
+    const dropsBefore = await ev(p, 'd.stats.drops');
+    await p.focus('#btnGear'); await p.keyboard.press('Space'); await sleep(150);
+    ok('Space on a focused button does not also drop a dish', (await ev(p, 'd.stats.drops')) === dropsBefore && (await sheetText(p)).includes('Settings'));
+    await dismissSheet(p);
 
     /* 11. Back button → pause modal → resume */
     await ev(p, '(N.UI.onBack(), 1)'); await sleep(100);
@@ -179,6 +184,9 @@ async function waitOverGone(p, ms = 4000) { await p.waitForFunction(() => docume
     await forceOver();
     ok('red-line timer leads to game over (not instant)', true);
     await p.screenshot({ path: `${SHOTS}/10-gameover.png` });
+    await p.evaluate(() => { document.getElementById('btnShop').click(); document.getElementById('btnGear').click(); document.getElementById('strip').click(); });
+    await p.keyboard.press('Escape'); await sleep(100);
+    ok('game over cannot be replaced or dismissed (HUD inert, Esc/back ignored)', /overflowed|best feast/i.test(await sheetText(p)) && await p.evaluate(() => document.getElementById('bar').inert && document.getElementById('hud').inert));
     const n0 = await ev(p, 's.pieces.size');
     await p.click('#reviveBtn'); await waitOverGone(p); await sleep(200);
     ok('revive removes top 30% and resumes', (await ev(p, 's.pieces.size')) === n0 - Math.ceil(n0 * 0.3) && (await ev(p, 's.state')) === 'play', `${n0}→${await ev(p, 's.pieces.size')}`);

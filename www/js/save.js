@@ -73,9 +73,16 @@
        furthest day already seen, so missions/streaks can't be re-claimed by rewinding time. */
     today() {
       const now = new Date();
-      const real = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 864e5);
-      if (real > this.data.maxDay) { this.data.maxDay = real; this.saveSoon(); }
-      return Math.max(real, this.data.maxDay);
+      const real = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 864e5), d = this.data;
+      if (real > d.maxDay) { d.maxDay = real; this.saveSoon(); }
+      else if (d.maxDay - real > 2) {
+        // The clock was set far ahead and has been corrected. Rejoin real time instead of freezing dailies until it
+        // catches up, but treat today as already claimed so winding the clock back never pays out twice.
+        d.maxDay = real; d.streak.lastClaim = Math.min(d.streak.lastClaim, real); d.streak.lastPrompt = Math.min(d.streak.lastPrompt, real);
+        if (d.daily.day > real) d.daily.day = real;
+        this.save();
+      }
+      return Math.max(real, d.maxDay);
     },
     _sanitize: sanitize, _defaults: defaults,
   };

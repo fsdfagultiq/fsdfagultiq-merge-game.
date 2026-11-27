@@ -283,9 +283,44 @@
   function productType(id) { var p = products()[id]; return p && p.type; }
   function realIAP() { return isNative && cfg().USE_MOCK_IAP === false && !!plugin('NativePurchases'); }
 
+  /* Purchases that complete outside purchaseProduct() (pending payments that clear later, or purchases
+     the app never delivered before it was killed) arrive via 'transactionUpdated'. Each is delivered once:
+     consumables are de-duplicated by purchase token / transaction id, non-consumables are idempotent. */
+  var GRANTED_KEY = 'nmm_granted_tx';
+  var entitlementHandlers = [], queuedEntitlements = [];
+  function grantedList() { try { var a = JSON.parse(w.localStorage.getItem(GRANTED_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function wasGranted(key) { return !!key && grantedList().indexOf(key) >= 0; }
+  function markGranted(key) { if (!key) return; try { var a = grantedList(); if (a.indexOf(key) < 0) { a.push(key); w.localStorage.setItem(GRANTED_KEY, JSON.stringify(a.slice(-200))); } } catch (e) {} }
+  function txKey(tx) { return tx && (tx.purchaseToken || tx.transactionId) || ''; }
+  function emitEntitlement(productId) {
+    if (!entitlementHandlers.length) { queuedEntitlements.push(productId); return; }
+    entitlementHandlers.forEach(function (h) { try { h(productId); } catch (e) { warn('entitlement handler', errMsg(e)); } });
+  }
+  function onEntitlement(handler) {
+    if (typeof handler !== 'function') return function () {};
+    entitlementHandlers.push(handler);
+    var q = queuedEntitlements.splice(0); q.forEach(function (id) { try { handler(id); } catch (e) {} });
+    return unsub(entitlementHandlers, handler);
+  }
+  function handleUpdatedTx(NP, tx) {
+    try {
+      if (!isValidTx(tx)) return;                                   // still pending / revoked: wait for the next update
+      var id = tx.productIdentifier; if (!id || !products()[id]) return;
+      var key = txKey(tx), consumable = productType(id) === 'consumable';
+      if (consumable) {
+        if (!wasGranted(key)) { markGranted(key); emitEntitlement(id); }
+        if (os === 'android' && tx.purchaseToken) withTimeout(NP.consumePurchase({ purchaseToken: tx.purchaseToken }), 8000, null).catch(function () {});
+      } else {
+        emitEntitlement(id);                                        // non-consumables: idempotent on the game side
+        if (os === 'android' && tx.purchaseToken && tx.isAcknowledged === false) withTimeout(NP.acknowledgePurchase({ purchaseToken: tx.purchaseToken }), 8000, null).catch(function () {});
+      }
+    } catch (e) { warn('transactionUpdated', errMsg(e)); }
+  }
+
   function setupBilling() {
     var NP = plugin('NativePurchases');
     if (!NP) { warn('NativePurchases plugin not available'); return Promise.resolve(); }
+    try { if (has(NP, 'addListener')) NP.addListener('transactionUpdated', function (tx) { handleUpdatedTx(NP, tx); }); } catch (e) { warn('addListener transactionUpdated', errMsg(e)); }
     var ids = Object.keys(products());
     return withTimeout(has(NP, 'isBillingSupported') ? NP.isBillingSupported() : { isBillingSupported: true }, 4000, null).then(function (r) {
       if (r && r.isBillingSupported === false) { warn('billing not supported on this device'); return null; }
@@ -328,14 +363,20 @@
         isConsumable: consumable,        // Android: plugin consumes it after purchase so it can be bought again
         autoAcknowledgePurchases: true,  // acknowledge (Android) / finish (iOS) automatically
       })).then(function (tx) {
+        if (tx && os === 'android' && String(tx.purchaseState) === '0') { log('purchase pending', productId); return 'pending'; }
         var ok = isValidTx(tx) && (!tx.productIdentifier || tx.productIdentifier === productId);
-        if (!ok) log('purchase not completed (pending or invalid)', productId);
-        return ok;
+        if (!ok) { log('purchase not completed (invalid)', productId); return false; }
+        var key = txKey(tx);
+        if (consumable && wasGranted(key)) return 'delivered';       // transactionUpdated already granted it
+        markGranted(key);
+        return true;
       }, function (e) {
         var code = (e && (e.code || e.errorCode)) || '';
         var msg = errMsg(e);
-        if (os === 'android' && consumable && (/ITEM_ALREADY_OWNED/i.test(code) || /already owned/i.test(msg))) {
-          return recoverOwnedConsumable(NP, productId);
+        if (/pending/i.test(code + ' ' + msg)) { log('purchase pending', productId); return 'pending'; }
+        if (/ITEM_ALREADY_OWNED/i.test(code) || /already owned/i.test(msg)) {
+          if (os === 'android' && consumable) return recoverOwnedConsumable(NP, productId);
+          return true;                                              // non-consumable the user already owns: deliver it
         }
         if (/USER_CANCELED|cancel/i.test(code + ' ' + msg)) log('purchase cancelled', productId);
         else warn('purchase failed', productId, msg);
@@ -361,11 +402,12 @@
       return withTimeout(has(NP, 'restorePurchases') ? NP.restorePurchases() : null, 15000, null).then(function () {
         return withTimeout(NP.getPurchases(os === 'ios' ? { onlyCurrentEntitlements: true } : { productType: 'inapp' }), 10000, null);
       }).then(function (r) {
+        if (!r) return null;                                        // timed out: store unreachable
         var ids = ((r && r.purchases) || []).filter(isValidTx).map(function (t) { return t.productIdentifier; })
           .filter(function (id) { return !!id && !!products()[id] && nonConsumable(id); });
         return uniq(ids);
-      }).catch(function (e) { warn('restore', errMsg(e)); return []; });
-    } catch (e) { warn('restore', errMsg(e)); return Promise.resolve([]); }
+      }).catch(function (e) { warn('restore', errMsg(e)); return null; });
+    } catch (e) { warn('restore', errMsg(e)); return Promise.resolve(null); }
   }
 
   function getPrice(productId) {
@@ -496,5 +538,6 @@
     onPause: onPause,
     onResume: onResume,
     haptic: haptic,
+    onEntitlement: onEntitlement,
   };
 })(window);

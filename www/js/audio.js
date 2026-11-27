@@ -17,7 +17,7 @@
           this.noiseBuf = c.createBuffer(1, len, c.sampleRate);
           const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
         }
-        if (this.ctx.state === 'suspended') this.ctx.resume();
+        if (this.ctx.state !== 'running') this.ctx.resume();
         if (S().music) Music.start();
       } catch (e) {}
     },
@@ -29,7 +29,7 @@
       if (S().music) Music.start(); else Music.stop();
     },
     suspend() { try { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); } catch (e) {} },
-    resume() { try { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); } catch (e) {} },
+    resume() { try { if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume(); } catch (e) {} },   // also iOS 'interrupted'
     tone(type, t0, pts, dur, vol, bus) {
       const c = this.ctx, o = c.createOscillator(), g = c.createGain();
       o.type = type; o.frequency.setValueAtTime(pts[0][0], t0);
