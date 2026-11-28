@@ -1,0 +1,72 @@
+PASS  offline: no external requests
+PASS  offline: canvas rendered
+PASS  streak auto-prompts on first launch
+PASS  streak Day 1 grants 100 coins
+PASS  streak not claimable twice same day
+PASS  onboarding hint visible before first drop
+PASS  50+ drops processed  — drops=50
+PASS  hint removed permanently after first drop
+PASS  merges happened & scored  — merges=34
+PASS  discoveries recorded
+PASS  merge lock: 3× Tier4 → exactly one Tier5 + one Tier4  — 4,5
+PASS  merge lock: 4× Tier2 → never more than conservation allows  — 3,3
+PASS  fever combo reaches ×3 within window  — combo=3
+PASS  fever multiplies score (4 + 8 + 12 = 24 base)  — gained=24
+PASS  fever badge shown
+PASS  wildcard upgrades Tier7 → Tier8  — 8
+PASS  wildcard cadence every 15th (Spice Jar Lv0)
+PASS  frozen piece refuses to merge
+PASS  adjacent merge thaws ice
+PASS  discovery card shown for first Ramen Bowl
+PASS  discovery grants +120 gems  — 120
+PASS  discovery is non-blocking (no modal, not paused)
+PASS  discovery Watch Ad ×2 doubles gems
+PASS  stall upgrade spends coins
+PASS  theme bought with gems & applied
+PASS  upgrades persist across reload
+PASS  theme persists across reload
+PASS  Spice Jar Lv2 → wildcard every 13
+PASS  Bamboo Steamer Lv1 → coinMult 1.1
+PASS  mission claim grants gems & coins
+PASS  mission cannot be claimed twice
+PASS  mission tracking: score mission progress via play
+PASS  remove ads purchase grants entitlement
+PASS  Restore Purchases restores Remove Ads
+PASS  cancelled purchase grants nothing & unlocks UI
+PASS  game resumes after closing shop
+PASS  HUD interactive again after modal closes
+PASS  Space on a focused button does not also drop a dish
+PASS  back button opens Pause
+PASS  back again closes Pause
+PASS  settings toggle persists
+PASS  album shows discovered count
+PASS  no page errors in long session
+PASS  red-line timer leads to game over (not instant)
+PASS  game over cannot be replaced or dismissed (HUD inert, Esc/back ignored)
+PASS  revive removes top 30% and resumes  — 11→7
+PASS  revive offered only once per run
+PASS  2x Coins rewarded ad doubles run coins  — 0+40→40
+PASS  run #1: NO interstitial
+PASS  run #2: interstitial shown (every 2nd decline)
+PASS  run #3: starter bundle offer pops once
+PASS  run #4: interstitial shown again
+PASS  adsRemoved: never an interstitial
+PASS  starter offer never repeats
+PASS  no page errors in game-over flows
+PASS  next day: streak auto-prompts Day 2
+PASS  clock rewind: nothing re-claimable
+PASS  missed days: streak resets to Day 1
+PASS  corrupt save falls back to backup copy
+PASS  invalid save values are sanitized
+PASS  v1 save migrates
+PASS  layout 390×844: HUD & bar inside viewport  — []
+PASS  layout 390×844: no overlapping controls
+PASS  layout 390×844: no clipped labels
+PASS  layout 360×640: HUD & bar inside viewport  — []
+PASS  layout 360×640: no overlapping controls
+PASS  layout 360×640: no clipped labels
+PASS  layout 412×915: HUD & bar inside viewport  — []
+PASS  layout 412×915: no overlapping controls
+PASS  layout 412×915: no clipped labels
+
+70/70 passed
